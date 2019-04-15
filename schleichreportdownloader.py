@@ -5,6 +5,16 @@ import time
 import datetime
 import progressbar
 
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font
+
+
+def as_text(value):
+    if value is None:
+        return ""
+    return str(value)
+
 
 class NoReportException(Exception):
     pass
@@ -38,7 +48,73 @@ class TestReport:
                 self.steps_with_results.append(parsed_step)
 
     def store_as_xlsx(self, name):
-        pass
+        wb = Workbook()
+
+        bold_font = Font(bold=True)
+
+        dest_filename = name + '.xlsx'
+
+        ws1 = wb.active
+        ws1.title = "Test Report"
+
+        for column_cells in ws1.columns:
+            length = max(len(as_text(cell.value)) for cell in column_cells)
+            ws1.column_dimensions[column_cells[0].column].width = length
+
+        ws1['A1'] = 'Preset Name'
+        ws1['B1'] = 'Date'
+        ws1['A1'].font = bold_font
+        ws1['B1'].font = bold_font
+
+        ws1['A2'] = self.name
+        ws1['B2'] = self.date
+
+        ws1['A4'] = 'Step Number'
+        ws1['B4'] = 'Method'
+        ws1['C4'] = 'Step Name'
+        ws1['D4'] = 'Limit Value'
+        ws1['E4'] = 'Actual Value'
+        ws1['F4'] = 'Test Condition'
+        ws1['G4'] = 'Actual Condition'
+        ws1['H4'] = 'Test Duration'
+        ws1['I4'] = 'Go'
+
+        ws1['A4'].font = bold_font
+        ws1['B4'].font = bold_font
+        ws1['C4'].font = bold_font
+        ws1['D4'].font = bold_font
+        ws1['E4'].font = bold_font
+        ws1['F4'].font = bold_font
+        ws1['G4'].font = bold_font
+        ws1['H4'].font = bold_font
+        ws1['I4'].font = bold_font
+
+        row = 5
+        for step in self.steps_with_results:
+            for col in range(1, len(step) + 2):
+                value = 0
+                if col == 1:
+                    value = row - 4
+                if col == 2:
+                    value = step['method']
+                elif col == 3:
+                    value = step['name']
+                elif col == 4:
+                    value = str(step['limit_value']) + ' mA'
+                elif col == 5:
+                    value = str(step['actual_value']) + ' mA'
+                elif col == 6:
+                    value = str(step['test_condition']) + ' V'
+                elif col == 7:
+                    value = str(step['actual_condition']) + ' V'
+                elif col == 8:
+                    value = str(step['test_duration']) + ' s'
+                elif col == 9:
+                    value = step['go']
+                _ = ws1.cell(column=col, row=row, value=value)
+            row += 1
+
+        wb.save(filename=dest_filename)
 
     def __str__(self):
         string = ''
@@ -108,7 +184,9 @@ class TestingDevice:
 
 
 device = TestingDevice()
-device.start_test()
+report = TestReport("��001 HV 1320 100.00 1338 0.58 IO_61.0_Tutto*vs*Massa*CH 002 HV 1320 100.00 1326 0.31 IO_61.0_Potenza*vs*Circ.Secondari*CH 003 HV 1320 100.00 1337 0.41 IO_61.0_Nn*vs*altri*CH 004 HV 1320 100.00 1328 0.40 IO_61.0_L1l1*vs*altri*CH 005 HV 1320 100.00 1339 0.42 IO_61.0_L2l2*vs*altri*CH 006 HV 1320 100.00 1328 0.44 IO_61.0_L3l3*vs*altri*CH 007 HV 900 100.00 921 0.19 IO_61.0_Circ.Secondari*vs*Massa*CH 008 HV 1320 100.00 1339 0.51 IO_61.0_Line*vs*Load*AP 009 HV 1320 100.00 1335 0.55 IO_61.0_Tutto*vs*Massa*AP 010 HV 1320 100.00 1325 0.31 IO_61.0_Potenza*vs*Circ.Secondari*AP 011 HV 900 100.00 907 0.19 IO_61.0_Circ.Secondari*vs*Massa*AP 012 HV 600 100.00 614 0.16 IO_61.0_Motore*vs*Massa NUM_1 NAME_ANSI*635V*508V*252V*60% DA_15.04.19_12:21:10 xE2 END 73 ANSI 635V 508V 252V 60% | 2019-04-15 12:21:10")
+report.store_as_xlsx('example')
+'''device.start_test()
 report = None
 print('Waiting for report...')
 bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
@@ -116,8 +194,9 @@ i = 0
 while not report:
     try:
         report = device.get_first_available_report()
+        report.store_as_xlsx('example')
     except NoReportException:
         i += 1
         bar.update(i)
         time.sleep(0.5)
-device.close_communication()
+device.close_communication()'''
