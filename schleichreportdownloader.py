@@ -57,10 +57,6 @@ class TestReport:
         ws1 = wb.active
         ws1.title = "Test Report"
 
-        for column_cells in ws1.columns:
-            length = max(len(as_text(cell.value)) for cell in column_cells)
-            ws1.column_dimensions[column_cells[0].column].width = length
-
         ws1['A1'] = 'Preset Name'
         ws1['B1'] = 'Date'
         ws1['A1'].font = bold_font
@@ -113,6 +109,17 @@ class TestReport:
                     value = step['go']
                 _ = ws1.cell(column=col, row=row, value=value)
             row += 1
+
+        column_widths = []
+        for row in ws1.iter_rows():
+            for i, cell in enumerate(row):
+                try:
+                    column_widths[i] = max(column_widths[i], len(as_text(cell.value)))
+                except IndexError:
+                    column_widths.append(len(as_text(cell.value)))
+
+        for i, column_width in enumerate(column_widths):
+            ws1.column_dimensions[get_column_letter(i + 1)].width = column_width + 5
 
         wb.save(filename=dest_filename)
 
@@ -183,7 +190,7 @@ class TestingDevice:
         self.ser.close()
 
 
-device = TestingDevice()
+#device = TestingDevice()
 report = TestReport("��001 HV 1320 100.00 1338 0.58 IO_61.0_Tutto*vs*Massa*CH 002 HV 1320 100.00 1326 0.31 IO_61.0_Potenza*vs*Circ.Secondari*CH 003 HV 1320 100.00 1337 0.41 IO_61.0_Nn*vs*altri*CH 004 HV 1320 100.00 1328 0.40 IO_61.0_L1l1*vs*altri*CH 005 HV 1320 100.00 1339 0.42 IO_61.0_L2l2*vs*altri*CH 006 HV 1320 100.00 1328 0.44 IO_61.0_L3l3*vs*altri*CH 007 HV 900 100.00 921 0.19 IO_61.0_Circ.Secondari*vs*Massa*CH 008 HV 1320 100.00 1339 0.51 IO_61.0_Line*vs*Load*AP 009 HV 1320 100.00 1335 0.55 IO_61.0_Tutto*vs*Massa*AP 010 HV 1320 100.00 1325 0.31 IO_61.0_Potenza*vs*Circ.Secondari*AP 011 HV 900 100.00 907 0.19 IO_61.0_Circ.Secondari*vs*Massa*AP 012 HV 600 100.00 614 0.16 IO_61.0_Motore*vs*Massa NUM_1 NAME_ANSI*635V*508V*252V*60% DA_15.04.19_12:21:10 xE2 END 73 ANSI 635V 508V 252V 60% | 2019-04-15 12:21:10")
 report.store_as_xlsx('example')
 '''device.start_test()
