@@ -3,6 +3,11 @@
 import serial
 import time
 import datetime
+import progressbar
+
+
+class NoReportException(Exception):
+    pass
 
 
 class TestReport:
@@ -32,6 +37,9 @@ class TestReport:
                 parsed_step['go'] = 'GO' if parsed_step['actual_value'] <= parsed_step['limit_value'] else 'NGO'
                 self.steps_with_results.append(parsed_step)
 
+    def store_as_xlsx(self, name):
+        pass
+
     def __str__(self):
         string = ''
         string += self.name + ' | ' + str(self.date) + '\n'
@@ -45,6 +53,7 @@ class TestingDevice:
     BEEP_COMMAND = [0x02, 0x81, 0xfa, 0x62, 0x20, 0x33, 0x42, 0x03]
     IDENTIFY_COMMAND = [0x02, 0x81, 0xfd]
     GET_REPORT_COMMAND = [0x02, 0x81, 0x06]
+    START_TEST_COMMAND = [0x02, 0x81, 0xfa, 0x73, 0x20, 0x32, 0x41, 0x03]
 
     def __init__(self):
         self.ser = serial.Serial('/dev/ttyUSB1', baudrate=9600, timeout=None, parity=serial.PARITY_NONE,
@@ -56,8 +65,12 @@ class TestingDevice:
 
     def read_all(self):
         read_data = ''
-        while self.ser.inWaiting() > 0:
-            read_data += self.ser.read(self.ser.inWaiting())
+        while self.ser.in_waiting > 0:
+            try:
+                new_data = self.ser.read(self.ser.in_waiting)
+                read_data += new_data.decode(errors='ignore')
+            except TypeError:
+                continue
             time.sleep(0.12)
         return read_data
 
@@ -68,24 +81,43 @@ class TestingDevice:
         self.send_custom_command(TestingDevice.IDENTIFY_COMMAND)
         return self.read_all()
 
-    def get_report(self):
+    def get_first_available_report(self):
         self.send_custom_command(TestingDevice.GET_REPORT_COMMAND)
         result = self.read_all()
-        print(result)
-        if len(result.strip().replace(b'\x15', b'').replace(b'4', b'').replace(b'\x03', b'').replace(b'2', b'')) == 0:
-            raise Exception('No report available for download.')
+        if len(result.strip().replace('\x07', '').replace('\x15', '').replace('4', '').replace('\x03', '').replace('2', '')) == 0:
+            raise NoReportException('No report available for download.')
         return TestReport(result)
+
+    def get_all_reports(self):
+        reports = []
+        while True:
+            try:
+                reports.append(self.get_first_available_report())
+            except NoReportException:
+                return reports
+
+    def start_test(self):
+        self.send_custom_command(TestingDevice.START_TEST_COMMAND)
+        self.ser.reset_input_buffer()
+
+    def clear_all_reports(self):
+        self.get_all_reports()
 
     def close_communication(self):
         self.ser.close()
 
 
 device = TestingDevice()
-#for i in range(0, 1):
-#    device.beep()
-#device.beep()
-#print(device.identify())
-#print(device.get_report())
-report = TestReport("��001 HV 1320 100.00 1338 0.58 IO_61.0_Tutto*vs*Massa*CH 002 HV 1320 100.00 1326 0.31 IO_61.0_Potenza*vs*Circ.Secondari*CH 003 HV 1320 100.00 1337 0.41 IO_61.0_Nn*vs*altri*CH 004 HV 1320 100.00 1328 0.40 IO_61.0_L1l1*vs*altri*CH 005 HV 1320 100.00 1339 0.42 IO_61.0_L2l2*vs*altri*CH 006 HV 1320 100.00 1328 0.44 IO_61.0_L3l3*vs*altri*CH 007 HV 900 100.00 921 0.19 IO_61.0_Circ.Secondari*vs*Massa*CH 008 HV 1320 100.00 1339 0.51 IO_61.0_Line*vs*Load*AP 009 HV 1320 100.00 1335 0.55 IO_61.0_Tutto*vs*Massa*AP 010 HV 1320 100.00 1325 0.31 IO_61.0_Potenza*vs*Circ.Secondari*AP 011 HV 900 100.00 907 0.19 IO_61.0_Circ.Secondari*vs*Massa*AP 012 HV 600 100.00 614 0.16 IO_61.0_Motore*vs*Massa NUM_1 NAME_ANSI*635V*508V*252V*60% DA_15.04.19_12:21:10 xE2 END 73 ANSI 635V 508V 252V 60% | 2019-04-15 12:21:10")
-print(report)
+device.start_test()
+report = None
+print('Waiting for report...')
+bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
+i = 0
+while not report:
+    try:
+        report = device.get_first_available_report()
+    except NoReportException:
+        i += 1
+        bar.update(i)
+        time.sleep(0.5)
 device.close_communication()
