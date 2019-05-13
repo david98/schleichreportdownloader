@@ -10,10 +10,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font
 
 
-def as_text(value):
-    if value is None:
-        return ""
-    return str(value)
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 class NoReportException(Exception):
@@ -28,11 +25,11 @@ class TestReport:
     steps: A list of {
         'name': Name of the step
         'method': HV,
-        'test_condition': float(step[1]),
-        'limit_value': float(step[2]),
-        'actual_condition': float(step[3]),
-        'actual_value': float(step[4]),
-        'test_duration': float(split_step_info[1]),
+        'test_condition': Set voltage,
+        'limit_value': Maximum current,
+        'actual_condition': Actual measured voltage,
+        'actual_value': Actual measured current,
+        'test_duration': Step duration in seconds,
     }
     """
 
@@ -204,20 +201,117 @@ class TestingDevice:
         self.ser.close()
 
 
-#device = TestingDevice()
-report = TestReport("��001 HV 1320 100.00 1338 0.58 IO_61.0_Tutto*vs*Massa*CH 002 HV 1320 100.00 1326 0.31 IO_61.0_Potenza*vs*Circ.Secondari*CH 003 HV 1320 100.00 1337 0.41 IO_61.0_Nn*vs*altri*CH 004 HV 1320 100.00 1328 0.40 IO_61.0_L1l1*vs*altri*CH 005 HV 1320 100.00 1339 0.42 IO_61.0_L2l2*vs*altri*CH 006 HV 1320 100.00 1328 0.44 IO_61.0_L3l3*vs*altri*CH 007 HV 900 100.00 921 0.19 IO_61.0_Circ.Secondari*vs*Massa*CH 008 HV 1320 100.00 1339 0.51 IO_61.0_Line*vs*Load*AP 009 HV 1320 100.00 1335 0.55 IO_61.0_Tutto*vs*Massa*AP 010 HV 1320 100.00 1325 0.31 IO_61.0_Potenza*vs*Circ.Secondari*AP 011 HV 900 100.00 907 0.19 IO_61.0_Circ.Secondari*vs*Massa*AP 012 HV 600 100.00 614 0.16 IO_61.0_Motore*vs*Massa NUM_1 NAME_ANSI*635V*508V*252V*60% DA_15.04.19_12:21:10 xE2 END 73 ANSI 635V 508V 252V 60% | 2019-04-15 12:21:10")
-report.store_as_xlsx('example')
-'''device.start_test()
-report = None
-print('Waiting for report...')
-bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
-i = 0
-while not report:
-    try:
-        report = device.get_first_available_report()
-        report.store_as_xlsx('example')
-    except NoReportException:
-        i += 1
-        bar.update(i)
-        time.sleep(0.5)
-device.close_communication()'''
+class TextFeedback:
+
+    def __init__(self, qt_text_edit: QtWidgets.QTextEdit):
+        self.qt_text_edit = qt_text_edit
+        self._translate = QtCore.QCoreApplication.translate
+
+    def set_text(self, text: str):
+        self.qt_text_edit.setText(self._translate("MainWindow", text))
+
+    def clear(self):
+        self.set_text('')
+
+    def append(self, text: str):
+        current_text = self.qt_text_edit.toPlainText()
+        self.set_text(current_text + text)
+        pass
+
+    def append_new_line(self, text:str):
+        current_text = self.qt_text_edit.toPlainText()
+        if len(current_text) == 0:
+            self.append(text)
+        else:
+            self.append('\n' + text)
+
+
+class TestManager:
+
+    def __init__(self, device: TestingDevice):
+        self.device = device
+        self.text_feedback: TextFeedback = None
+
+    def set_text_feedback(self, qt_text_edit: QtWidgets.QTextEdit):
+        self.text_feedback = TextFeedback(qt_text_edit)
+
+    def start_test(self):
+        self.text_feedback.append_new_line("Started")
+
+
+class UiMainWindow(object):
+
+    def __init__(self, test_manager: TestManager):
+        self.test_manager = test_manager
+
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(515, 418)
+        MainWindow.setMinimumSize(QtCore.QSize(400, 300))
+        MainWindow.setAcceptDrops(False)
+        MainWindow.setAutoFillBackground(False)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.startTestButton = QtWidgets.QPushButton(self.centralwidget)
+        self.startTestButton.setMinimumSize(QtCore.QSize(0, 100))
+        font = QtGui.QFont()
+        font.setPointSize(24)
+        self.startTestButton.setFont(font)
+        self.startTestButton.setObjectName("startTestButton")
+        self.verticalLayout.addWidget(self.startTestButton)
+        self.statusInfo = QtWidgets.QTextEdit(self.centralwidget)
+
+        self.test_manager.set_text_feedback(self.statusInfo)
+
+        self.statusInfo.setReadOnly(True)
+        self.statusInfo.setObjectName("statusInfo")
+        self.verticalLayout.addWidget(self.statusInfo)
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+        self.actionstart_test = QtWidgets.QAction(MainWindow)
+        self.actionstart_test.setCheckable(False)
+        self.actionstart_test.setEnabled(True)
+        self.actionstart_test.setObjectName("actionstart_test")
+
+        self.retranslateUi(MainWindow)
+        self.actionstart_test.trigger = self.test_manager.start_test
+        self.startTestButton.released.connect(self.actionstart_test.trigger)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "Schleich Report Downloader"))
+        self.startTestButton.setText(_translate("MainWindow", "Start Test"))
+        self.statusInfo.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-family:\'Noto Sans\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
+        self.actionstart_test.setText(_translate("MainWindow", "start_test"))
+        self.actionstart_test.setToolTip(_translate("MainWindow", "Starts a test using the currently selected test protocol and waits for its end"))
+        self.test_manager.start_test()
+
+
+def as_text(value):
+    if value is None:
+        return ""
+    return str(value)
+
+
+def initialize_program():
+    pass
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    test_manager = TestManager(None)
+    ui = UiMainWindow(test_manager)
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())
