@@ -298,9 +298,9 @@ class TestManager:
                 break
             except NoReportException:
                 continue
-        self.text_feedback.append_new_line("Report ")
+        self.text_feedback.append_new_line("Report downloaded succesfully.")
         report.store_as_xlsx("{0}.xlsx".format(int(time.time()*1000)))
-        file_name = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report', './', filter='*.xlsx')
+        file_name = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report', './report-{0}.xlsx'.format(int(time.time()*1000)), filter='*.xlsx')
         report.store_as_xlsx(file_name)
         self.start_test_control.toggle_enable()
         self.loading_indicator.toggle_enable()
