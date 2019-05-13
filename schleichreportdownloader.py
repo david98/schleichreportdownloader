@@ -3,7 +3,6 @@
 import serial
 import time
 import datetime
-import progressbar
 
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -63,7 +62,7 @@ class TestReport:
 
         bold_font = Font(bold=True)
 
-        dest_filename = name + '.xlsx'
+        dest_filename = name
 
         ws1 = wb.active
         ws1.title = "Test Report"
@@ -149,9 +148,10 @@ class TestingDevice:
     GET_REPORT_COMMAND = [0x02, 0x81, 0x06]
     START_TEST_COMMAND = [0x02, 0x81, 0xfa, 0x73, 0x20, 0x32, 0x41, 0x03]
 
-    def __init__(self):
-        self.ser = serial.Serial('/dev/ttyUSB1', baudrate=9600, timeout=None, parity=serial.PARITY_NONE,
+    def __init__(self, serial_port: str):
+        self.ser = serial.Serial(serial_port, baudrate=9600, timeout=None, parity=serial.PARITY_NONE,
                                  bytesize=serial.EIGHTBITS, stopbits=serial.STOPBITS_ONE, xonxoff=False)
+        self.id_string = ""
 
     def send_custom_command(self, command_hex):
         self.ser.write(serial.to_bytes(command_hex))
@@ -173,7 +173,10 @@ class TestingDevice:
 
     def identify(self):
         self.send_custom_command(TestingDevice.IDENTIFY_COMMAND)
-        return self.read_all()
+        id_string = self.read_all()
+        id_string = (id_string.split("Conness.")[0])[3:]
+        self.id_string = id_string
+        return id_string
 
     def get_first_available_report(self):
         self.send_custom_command(TestingDevice.GET_REPORT_COMMAND)
@@ -218,7 +221,7 @@ class TextFeedback:
         self.set_text(current_text + text)
         pass
 
-    def append_new_line(self, text:str):
+    def append_new_line(self, text: str):
         current_text = self.qt_text_edit.toPlainText()
         if len(current_text) == 0:
             self.append(text)
@@ -226,17 +229,92 @@ class TextFeedback:
             self.append('\n' + text)
 
 
+class StatusFeedback:
+
+    def __init__(self, qt_label: QtWidgets.QLabel):
+        self.qt_label = qt_label
+        self._translate = QtCore.QCoreApplication.translate
+
+    def set_text(self, text: str):
+        self.qt_label.setText(self._translate("MainWindow", text))
+
+
+class LoadingIndicator:
+
+    def __init__(self, qt_label: QtWidgets.QLabel):
+        self.qt_label = qt_label
+        self.spinner = QtGui.QMovie('spinner.gif')
+        self.visible = False
+
+    def toggle_enable(self):
+        if self.visible:
+            self.qt_label.clear()
+            self.visible = False
+        else:
+            self.qt_label.setMovie(self.spinner)
+            self.spinner.start()
+            self.visible = True
+
+
+class StartTestControl:
+
+    def __init__(self, qt_push_button: QtWidgets.QPushButton):
+        self.qt_push_button = qt_push_button
+
+    def toggle_enable(self):
+        self.qt_push_button.setEnabled(not self.qt_push_button.isEnabled())
+
+
 class TestManager:
 
     def __init__(self, device: TestingDevice):
         self.device = device
         self.text_feedback: TextFeedback = None
+        self.status_feedback: StatusFeedback = None
+        self.start_test_control: StartTestControl = None
+        self.loading_indicator: LoadingIndicator = None
 
     def set_text_feedback(self, qt_text_edit: QtWidgets.QTextEdit):
         self.text_feedback = TextFeedback(qt_text_edit)
 
+    def set_status_feedback(self, qt_label: QtWidgets.QLabel):
+        self.status_feedback = StatusFeedback(qt_label)
+
+    def set_start_test_control(self, qt_start_test_button: QtWidgets.QPushButton):
+        self.start_test_control = StartTestControl(qt_start_test_button)
+
+    def set_loading_indicator(self, qt_label: QtWidgets.QLabel):
+        self.loading_indicator = LoadingIndicator(qt_label)
+
+    def ready(self):
+        self.status_feedback.set_text("Connected to {0}".format(self.device.identify()))
+
+    def wait_for_report(self):
+        report = None
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            try:
+                report = self.device.get_first_available_report()
+                break
+            except NoReportException:
+                continue
+        self.text_feedback.append_new_line("Report ")
+        report.store_as_xlsx("{0}.xlsx".format(int(time.time()*1000)))
+        file_name = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report', './', filter='*.xlsx')
+        report.store_as_xlsx(file_name)
+        self.start_test_control.toggle_enable()
+        self.loading_indicator.toggle_enable()
+        self.text_feedback.append_new_line("Report was saved to {0}".format(file_name))
+
     def start_test(self):
-        self.text_feedback.append_new_line("Started")
+        self.start_test_control.toggle_enable()
+        self.loading_indicator.toggle_enable()
+        self.device.start_test()
+        self.text_feedback.clear()
+        self.text_feedback.append_new_line("Test started.")
+        self.text_feedback.append_new_line("Waiting for report...")
+        self.wait_for_report()
+        return
 
 
 class UiMainWindow(object):
@@ -261,6 +339,9 @@ class UiMainWindow(object):
         self.startTestButton.setFont(font)
         self.startTestButton.setObjectName("startTestButton")
         self.verticalLayout.addWidget(self.startTestButton)
+
+        self.test_manager.set_start_test_control(self.startTestButton)
+
         self.statusInfo = QtWidgets.QTextEdit(self.centralwidget)
 
         self.test_manager.set_text_feedback(self.statusInfo)
@@ -268,6 +349,33 @@ class UiMainWindow(object):
         self.statusInfo.setReadOnly(True)
         self.statusInfo.setObjectName("statusInfo")
         self.verticalLayout.addWidget(self.statusInfo)
+        self.status_labels = QtWidgets.QHBoxLayout()
+        self.status_labels.setObjectName("status_labels")
+        self.loadingIcon = QtWidgets.QLabel(self.centralwidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.loadingIcon.sizePolicy().hasHeightForWidth())
+        self.loadingIcon.setSizePolicy(sizePolicy)
+        self.loadingIcon.setMaximumSize(QtCore.QSize(16777215, 25))
+        self.loadingIcon.setScaledContents(False)
+        self.loadingIcon.setObjectName("loadingIcon")
+        self.status_labels.addWidget(self.loadingIcon)
+        self.connectionStatus = QtWidgets.QLabel(self.centralwidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.connectionStatus.sizePolicy().hasHeightForWidth())
+        self.connectionStatus.setSizePolicy(sizePolicy)
+        self.connectionStatus.setMaximumSize(QtCore.QSize(16777215, 25))
+        self.connectionStatus.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+        self.connectionStatus.setObjectName("connectionStatus")
+        self.status_labels.addWidget(self.connectionStatus)
+        self.verticalLayout.addLayout(self.status_labels)
+
+        self.test_manager.set_status_feedback(self.connectionStatus)
+        self.test_manager.set_loading_indicator(self.loadingIcon)
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -293,7 +401,7 @@ class UiMainWindow(object):
 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.actionstart_test.setText(_translate("MainWindow", "start_test"))
         self.actionstart_test.setToolTip(_translate("MainWindow", "Starts a test using the currently selected test protocol and waits for its end"))
-        self.test_manager.start_test()
+        self.test_manager.ready()
 
 
 def as_text(value):
@@ -302,16 +410,40 @@ def as_text(value):
     return str(value)
 
 
-def initialize_program():
-    pass
+def get_devices():
+    base_serial_string = "/dev/ttyUSB"
+    devices = []
+    i = -1
+    while True and i < 2:
+        try:
+            i += 1
+            device = TestingDevice(base_serial_string + str(i))
+            id_string = device.identify()
+            if len(id_string) > 0:
+                devices.append((base_serial_string + str(i), id_string))
+        except Exception as e:
+            continue
+    return devices
+
+
+def init_app():
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    available_devices = get_devices()
+    if len(available_devices) == 0:
+        error_dialog = QtWidgets.QErrorMessage()
+        error_dialog.showMessage('No connected device available. Exiting.')
+        sys.exit(app.exec_())
+    else:
+        MainWindow = QtWidgets.QMainWindow()
+        device = TestingDevice(available_devices[0][0])
+        device.get_all_reports()
+        test_manager = TestManager(device)
+        ui = UiMainWindow(test_manager)
+        ui.setupUi(MainWindow)
+        MainWindow.show()
+        sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    test_manager = TestManager(None)
-    ui = UiMainWindow(test_manager)
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
+    init_app()
