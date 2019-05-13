@@ -165,10 +165,7 @@ class TestingDevice:
         return self.read_all()
 
     def get_first_available_report(self):
-        self.send_custom_command
-            time.sleep(0.12)
-        return read_data
-(TestingDevice.GET_REPORT_COMMAND)
+        self.send_custom_command(TestingDevice.GET_REPORT_COMMAND)
         result = self.read_all()
         if len(result.strip().replace('\x07', '').replace('\x15', '').replace('4', '').replace('\x03', '').replace('2', '')) == 0:
             raise NoReportException('No report available for download.')
@@ -193,9 +190,10 @@ class TestingDevice:
         self.ser.close()
 
 
-device = TestingDevice()
-#report = TestReport("��001 HV 1320 100.00 1338 0.58 IO_61.0_Tutto*vs*Massa*CH 002 HV 1320 100.00 1326 0.31 IO_61.0_Potenza*vs*Circ.Secondari*CH 003 HV 1320 100.00 1337 0.41 IO_61.0_Nn*vs*altri*CH 004 HV 1320 100.00 1328 0.40 IO_61.0_L1l1*vs*altri*CH 005 HV 1320 100.00 1339 0.42 IO_61.0_L2l2*vs*altri*CH 006 HV 1320 100.00 1328 0.44 IO_61.0_L3l3*vs*altri*CH 007 HV 900 100.00 921 0.19 IO_61.0_Circ.Secondari*vs*Massa*CH 008 HV 1320 100.00 1339 0.51 IO_61.0_Line*vs*Load*AP 009 HV 1320 100.00 1335 0.55 IO_61.0_Tutto*vs*Massa*AP 010 HV 1320 100.00 1325 0.31 IO_61.0_Potenza*vs*Circ.Secondari*AP 011 HV 900 100.00 907 0.19 IO_61.0_Circ.Secondari*vs*Massa*AP 012 HV 600 100.00 614 0.16 IO_61.0_Motore*vs*Massa NUM_1 NAME_ANSI*635V*508V*252V*60% DA_15.04.19_12:21:10 xE2 END 73 ANSI 635V 508V 252V 60% | 2019-04-15 12:21:10")
-#report.store_as_xlsx('example')
+#device = TestingDevice()
+report = TestReport("��001 HV 1320 100.00 1338 0.58 IO_61.0_Tutto*vs*Massa*CH 002 HV 1320 100.00 1326 0.31 IO_61.0_Potenza*vs*Circ.Secondari*CH 003 HV 1320 100.00 1337 0.41 IO_61.0_Nn*vs*altri*CH 004 HV 1320 100.00 1328 0.40 IO_61.0_L1l1*vs*altri*CH 005 HV 1320 100.00 1339 0.42 IO_61.0_L2l2*vs*altri*CH 006 HV 1320 100.00 1328 0.44 IO_61.0_L3l3*vs*altri*CH 007 HV 900 100.00 921 0.19 IO_61.0_Circ.Secondari*vs*Massa*CH 008 HV 1320 100.00 1339 0.51 IO_61.0_Line*vs*Load*AP 009 HV 1320 100.00 1335 0.55 IO_61.0_Tutto*vs*Massa*AP 010 HV 1320 100.00 1325 0.31 IO_61.0_Potenza*vs*Circ.Secondari*AP 011 HV 900 100.00 907 0.19 IO_61.0_Circ.Secondari*vs*Massa*AP 012 HV 600 100.00 614 0.16 IO_61.0_Motore*vs*Massa NUM_1 NAME_ANSI*635V*508V*252V*60% DA_15.04.19_12:21:10 xE2 END 73 ANSI 635V 508V 252V 60% | 2019-04-15 12:21:10")
+report.store_as_xlsx('example')
+'''device.start_test()
 report = None
 print('Waiting for report...')
 bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
@@ -203,9 +201,9 @@ i = 0
 while not report:
     try:
         report = device.get_first_available_report()
-        report.store_as_xlsx('report')
+        report.store_as_xlsx('example')
     except NoReportException:
         i += 1
         bar.update(i)
         time.sleep(0.5)
-device.close_communication()
+device.close_communication()'''
