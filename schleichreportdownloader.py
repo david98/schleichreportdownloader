@@ -21,6 +21,20 @@ class NoReportException(Exception):
 
 
 class TestReport:
+    """ Represents a report
+
+    name: Name of the preset
+    date: Date and time of execution
+    steps: A list of {
+        'name': Name of the step
+        'method': HV,
+        'test_condition': float(step[1]),
+        'limit_value': float(step[2]),
+        'actual_condition': float(step[3]),
+        'actual_value': float(step[4]),
+        'test_duration': float(split_step_info[1]),
+    }
+    """
 
     def __init__(self, report_string):
         result = report_string.split('NUM_1')
