@@ -28,6 +28,7 @@ def get_devices():
 
 
 def init_app():
+    # logging configuration
     log_levels = {
         1: logging.DEBUG,
         2: logging.INFO,
@@ -40,7 +41,14 @@ def init_app():
         desired_log_level_index = int(sys.argv[1])
     except IndexError:
         pass
-    logging.basicConfig(level=log_levels[desired_log_level_index])
+
+    log_config = {
+        'level': log_levels[desired_log_level_index]
+    }
+
+    logging.basicConfig(**log_config)
+    # end logging configuration
+
     app = QtWidgets.QApplication(sys.argv)
     available_devices = get_devices()
     if len(available_devices) == 0:
@@ -55,8 +63,8 @@ def init_app():
         # maybe we could ask the user if he wants to store these
         device.get_all_reports()
 
-        test_manager = TestManager(device)
-        ui = UiMainWindow(test_manager)
+        test_manager = TestManager(device, log_config)
+        ui = UiMainWindow(test_manager, log_config)
         ui.setup_ui(main_window)
         main_window.showFullScreen()
         sys.exit(app.exec_())

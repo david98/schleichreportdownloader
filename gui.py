@@ -1,11 +1,19 @@
 from schleichore import TestManager
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import time
+import logging
 
 
-class UiMainWindow(object):
+class UiMainWindow(QtCore.QObject):
 
-    def __init__(self, test_manager: TestManager):
+    filename_available = QtCore.pyqtSignal(str)
+
+    def __init__(self, test_manager: TestManager, log_config: dict):
+        super().__init__()
+
+        logging.basicConfig(**log_config)
+
         self.test_manager = test_manager
 
         self.central_widget = None
@@ -19,6 +27,7 @@ class UiMainWindow(object):
         self.status_bar = None
 
         self.spinner = QtGui.QMovie('spinner.gif')
+        self.last_filename = None
 
     def on_text_feedback_update(self, new_text: str):
         self.text_box.setText(new_text)
@@ -35,6 +44,14 @@ class UiMainWindow(object):
 
     def on_set_start_test_enable(self, enabled: bool):
         self.start_test_button.setEnabled(enabled)
+
+    def on_show_filename_dialog(self, number: int):
+        dialog = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report',
+                                                          './report-{0}.xlsx'.format(int(time.time() * 1000)),
+                                                          filter='*.xlsx')
+        logging.debug(dialog)
+        self.last_filename = dialog[0]
+        self.filename_available.emit(self.last_filename)
 
     def setup_ui(self, main_window):
         main_window.setObjectName("MainWindow")
@@ -98,6 +115,9 @@ class UiMainWindow(object):
         self.action_start_test.setEnabled(True)
         self.action_start_test.setObjectName("actionstart_test")
 
+        self.test_manager.show_filename_dialog.connect(self.on_show_filename_dialog)
+        self.filename_available.connect(self.test_manager.on_filename_available)
+
         self.retranslate_ui(main_window)
         self.action_start_test.trigger = self.test_manager.start
         self.start_test_button.released.connect(self.action_start_test.trigger)
@@ -114,4 +134,4 @@ class UiMainWindow(object):
 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.action_start_test.setText(_translate("MainWindow", "start_test"))
         self.action_start_test.setToolTip(_translate("MainWindow", "Starts a test using the currently selected test protocol and waits for its end"))
-        self.test_manager.ready()
+        self.test_manager.start()

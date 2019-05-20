@@ -4,6 +4,8 @@ import serial
 import time
 import datetime
 import logging
+import os
+from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -178,10 +180,12 @@ class TestingDevice:
         self.send_custom_command(TestingDevice.BEEP_COMMAND)
 
     def identify(self):
+        logging.debug('Requesting identification.')
         self.send_custom_command(TestingDevice.IDENTIFY_COMMAND)
         id_string = self.read_all()
         id_string = (id_string.split("Conness.")[0])[3:]
         self.id_string = id_string
+        logging.debug('Device identifies as {0}'.format(self.id_string))
         return id_string
 
     def get_first_available_report(self):
@@ -297,45 +301,90 @@ class StartTestControl(QtCore.QObject):
 
 class TestManager(QtCore.QThread):
 
-    def __init__(self, device: TestingDevice):
+    show_filename_dialog = QtCore.pyqtSignal(int)
+
+    BACKUP_FOLDER = 'backups'
+    POLLING_INTERVAL = 5
+    MAX_BACKUP_FOLDER_SIZE = 0 * 1024 * 1024
+    TEMP_FOLDER = 'temp'
+
+    def on_filename_available(self, filename: str):
+        self.last_report.store_as_xlsx(filename)
+        self.text_feedback.append_new_line("Report was saved to {0}".format(filename))
+        self.end_test()
+
+    def __init__(self, device: TestingDevice, log_config: dict):
         super().__init__()
+
+        logging.basicConfig(**log_config)
+
+        if not os.path.exists(self.BACKUP_FOLDER):
+            os.makedirs(self.BACKUP_FOLDER)
+
+        if not os.path.exists(self.TEMP_FOLDER):
+            os.makedirs(self.TEMP_FOLDER)
+
         self.device = device
         self.text_feedback: TextFeedback = TextFeedback()
         self.status_feedback: StatusFeedback = StatusFeedback()
         self.start_test_control: StartTestControl = StartTestControl()
         self.loading_indicator: LoadingIndicator = LoadingIndicator()
+        self.last_report = None
+
+    def clean_backup_folder(self):
+        size = sum(os.path.getsize(self.BACKUP_FOLDER + '/' + f) for f in os.listdir(self.BACKUP_FOLDER) if os.path.isfile(self.BACKUP_FOLDER + '/' + f))
+        logging.debug('Backup folder size is {0}'.format(size))
+        if size > self.MAX_BACKUP_FOLDER_SIZE:
+            logging.info('Backup folder max size exceeded. Purging backups starting from the oldest.')
+            files = os.listdir(self.BACKUP_FOLDER)
+            files.sort()
+            i = 0
+            while size > self.MAX_BACKUP_FOLDER_SIZE:
+                file_size = os.path.getsize(self.BACKUP_FOLDER + '/' + files[i])
+                os.remove(self.BACKUP_FOLDER + '/' + files[i])
+                size -= file_size
+                i += 1
+            logging.info('{0} files deleted.'.format(i))
 
     def ready(self):
         self.status_feedback.set_text("Connected to {0}".format(self.device.identify()))
+        if os.path.exists(self.TEMP_FOLDER + '/test_running'):
+            logging.warning('Unexpected shutdown detected. Resuming wait.')
+            self.start_test_control.disable()
+            self.loading_indicator.enable()
+            self.text_feedback.append_new_line("Unexpected shutdown detected. Waiting for report...")
+            self.wait_for_report()
 
     def end_test(self):
         self.start_test_control.enable()
         self.loading_indicator.disable()
+        os.remove(self.TEMP_FOLDER + '/test_running')
 
     def wait_for_report(self):
         report = None
+        self.clean_backup_folder()
         while True:
-            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.POLLING_INTERVAL)
             try:
                 report = self.device.get_first_available_report()
                 break
             except NoReportException:
                 continue
         self.text_feedback.append_new_line("Report downloaded succesfully.")
-        report.store_as_xlsx("{0}.xlsx".format(int(time.time()*1000)))
-        file_name = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report', './report-{0}.xlsx'.format(int(time.time()*1000)), filter='*.xlsx')
-        report.store_as_xlsx(file_name)
-        self.text_feedback.append_new_line("Report was saved to {0}".format(file_name))
+        self.last_report = report
+        report.store_as_xlsx("{0}/{1}.xlsx".format(self.BACKUP_FOLDER, (int(time.time()*1000))))
+        self.show_filename_dialog.emit(1)
 
     def start_test(self):
         self.start_test_control.disable()
         self.loading_indicator.enable()
         self.device.start_test()
+        Path(self.TEMP_FOLDER + '/test_running').touch()
         self.text_feedback.clear()
         self.text_feedback.append_new_line("Test started.")
         self.text_feedback.append_new_line("Waiting for report...")
         self.wait_for_report()
 
     def run(self):
-        self.start_test()
+        self.ready()
 
