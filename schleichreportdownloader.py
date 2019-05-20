@@ -5,11 +5,6 @@ import logging
 import sys
 from serial import SerialException
 
-def as_text(value):
-    if value is None:
-        return ""
-    return str(value)
-
 
 # searches for the device on the first 100 USB-RS232 adapters
 # returns a list of tuples like ('/dev/ttyUSB1', id_string)
@@ -55,6 +50,7 @@ def init_app():
     else:
         main_window = QtWidgets.QMainWindow()
         device = TestingDevice(available_devices[0][0])
+
         # we need to flush the device's cache, otherwise we'll get an old report
         # maybe we could ask the user if he wants to store these
         device.get_all_reports()
@@ -62,7 +58,7 @@ def init_app():
         test_manager = TestManager(device)
         ui = UiMainWindow(test_manager)
         ui.setup_ui(main_window)
-        main_window.show()
+        main_window.showFullScreen()
         sys.exit(app.exec_())
 
 

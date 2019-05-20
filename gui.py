@@ -18,9 +18,30 @@ class UiMainWindow(object):
         self.action_start_test = None
         self.status_bar = None
 
+        self.spinner = QtGui.QMovie('spinner.gif')
+
+    @QtCore.pyqtSlot(str)
+    def on_text_feedback_update(self, new_text: str):
+        self.status_info.setText(new_text)
+
+    @QtCore.pyqtSlot(str)
+    def on_status_feedback_update(self, new_text: str):
+        self.connection_status.setText(new_text)
+
+    @QtCore.pyqtSlot(bool)
+    def on_set_loading_indicator_enable(self, enabled: bool):
+        if enabled:
+            self.loading_icon.setMovie(self.spinner)
+            self.spinner.start()
+        else:
+            self.loading_icon.clear()
+
+    @QtCore.pyqtSlot(bool)
+    def on_set_start_test_enable(self, enabled: bool):
+        self.start_test_button.setEnabled(enabled)
+
     def setup_ui(self, main_window):
         main_window.setObjectName("MainWindow")
-        main_window.resize(515, 418)
         main_window.setMinimumSize(QtCore.QSize(400, 300))
         main_window.setAcceptDrops(False)
         main_window.setAutoFillBackground(False)
@@ -40,7 +61,7 @@ class UiMainWindow(object):
 
         self.status_info = QtWidgets.QTextEdit(self.central_widget)
 
-        self.test_manager.set_text_feedback(self.status_info)
+        self.test_manager.text_feedback.text_feedback_update.connect(self.on_text_feedback_update)
 
         self.status_info.setReadOnly(True)
         self.status_info.setObjectName("statusInfo")

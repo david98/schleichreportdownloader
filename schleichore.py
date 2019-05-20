@@ -12,6 +12,12 @@ from openpyxl.styles import Font
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
+def as_text(value):
+    if value is None:
+        return ""
+    return str(value)
+
+
 class NoReportException(Exception):
     pass
 
@@ -206,24 +212,24 @@ class TestingDevice:
 
 class TextFeedback:
 
-    def __init__(self, qt_text_edit: QtWidgets.QTextEdit):
-        self.qt_text_edit = qt_text_edit
-        self._translate = QtCore.QCoreApplication.translate
+    text_feedback_update = QtCore.pyqtSignal(str)
+
+    def __init__(self):
+        self.text = ''
 
     def set_text(self, text: str):
-        self.qt_text_edit.setText(self._translate("MainWindow", text))
+        self.text = text
+        self.text_feedback_update.emit(text)
 
     def clear(self):
         self.set_text('')
 
     def append(self, text: str):
-        current_text = self.qt_text_edit.toPlainText()
-        self.set_text(current_text + text)
+        self.set_text(self.text + text)
         pass
 
     def append_new_line(self, text: str):
-        current_text = self.qt_text_edit.toPlainText()
-        if len(current_text) == 0:
+        if len(self.text) == 0:
             self.append(text)
         else:
             self.append('\n' + text)
@@ -231,34 +237,33 @@ class TextFeedback:
 
 class StatusFeedback:
 
-    def __init__(self, qt_label: QtWidgets.QLabel):
-        self.qt_label = qt_label
-        self._translate = QtCore.QCoreApplication.translate
+    status_feedback_update = QtCore.pyqtSignal(str)
+
+    def __init__(self):
+        self.text = ''
 
     def set_text(self, text: str):
-        self.qt_label.setText(self._translate("MainWindow", text))
+        self.text = text
+        self.status_feedback_update.emit(text)
 
 
 class LoadingIndicator:
 
-    def __init__(self, qt_label: QtWidgets.QLabel):
-        self.qt_label = qt_label
-        self.spinner = QtGui.QMovie('spinner.gif')
-        self.visible = False
+    set_loading_indicator_enable = QtCore.pyqtSignal(bool)
+
+    def __init__(self):
+        self.enabled = True
 
     def enable(self):
-        if not self.visible:
-            self.qt_label.setMovie(self.spinner)
-            self.spinner.start()
-            self.visible = True
+        self.enabled = True
+        self.set_loading_indicator_enable.emit(True)
 
     def disable(self):
-        if self.visible:
-            self.qt_label.clear()
-            self.visible = False
+        self.enabled = False
+        self.set_loading_indicator_enable.emit(False)
 
-    def toggle(self):
-        if self.visible:
+    def toggle_enable(self):
+        if self.enabled:
             self.disable()
         else:
             self.enable()
@@ -266,30 +271,35 @@ class LoadingIndicator:
 
 class StartTestControl:
 
-    def __init__(self, qt_push_button: QtWidgets.QPushButton):
-        self.qt_push_button = qt_push_button
+    set_start_test_enable = QtCore.pyqtSignal(bool)
+
+    def __init__(self):
+        self.enabled = True
 
     def enable(self):
-        self.qt_push_button.setEnabled(True)
+        self.enabled = True
+        self.set_start_test_enable.emit(True)
 
     def disable(self):
-        self.qt_push_button.setEnabled(False)
+        self.enabled = False
+        self.set_start_test_enable.emit(False)
 
     def toggle_enable(self):
-        self.qt_push_button.setEnabled(not self.qt_push_button.isEnabled())
+        if self.enabled:
+            self.disable()
+        else:
+            self.enable()
 
 
-class TestManager:
+class TestManager(QtCore.QThread):
 
     def __init__(self, device: TestingDevice):
+        super().__init__()
         self.device = device
-        self.text_feedback: TextFeedback = None
+        self.text_feedback: TextFeedback = TextFeedback()
         self.status_feedback: StatusFeedback = None
         self.start_test_control: StartTestControl = None
         self.loading_indicator: LoadingIndicator = None
-
-    def set_text_feedback(self, qt_text_edit: QtWidgets.QTextEdit):
-        self.text_feedback = TextFeedback(qt_text_edit)
 
     def set_status_feedback(self, qt_label: QtWidgets.QLabel):
         self.status_feedback = StatusFeedback(qt_label)
