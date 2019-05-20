@@ -57,7 +57,7 @@ class UiMainWindow(object):
         self.start_test_button.setObjectName("startTestButton")
         self.vertical_layout.addWidget(self.start_test_button)
 
-        self.test_manager.set_start_test_control(self.start_test_button)
+        self.test_manager.start_test_control.set_start_test_enable.connect(self.on_set_start_test_enable)
 
         self.status_info = QtWidgets.QTextEdit(self.central_widget)
 
@@ -90,8 +90,8 @@ class UiMainWindow(object):
         self.status_labels.addWidget(self.connection_status)
         self.vertical_layout.addLayout(self.status_labels)
 
-        self.test_manager.set_status_feedback(self.connection_status)
-        self.test_manager.set_loading_indicator(self.loading_icon)
+        self.test_manager.status_feedback.status_feedback_update.connect(self.on_status_feedback_update)
+        self.test_manager.loading_indicator.set_loading_indicator_enable.connect(self.on_set_loading_indicator_enable)
 
         main_window.setCentralWidget(self.central_widget)
         self.status_bar = QtWidgets.QStatusBar(main_window)
@@ -103,7 +103,7 @@ class UiMainWindow(object):
         self.action_start_test.setObjectName("actionstart_test")
 
         self.retranslate_ui(main_window)
-        self.action_start_test.trigger = self.test_manager.start_test
+        self.action_start_test.trigger = self.test_manager.start
         self.start_test_button.released.connect(self.action_start_test.trigger)
         QtCore.QMetaObject.connectSlotsByName(main_window)
 

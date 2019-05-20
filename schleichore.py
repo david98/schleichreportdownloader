@@ -297,18 +297,9 @@ class TestManager(QtCore.QThread):
         super().__init__()
         self.device = device
         self.text_feedback: TextFeedback = TextFeedback()
-        self.status_feedback: StatusFeedback = None
-        self.start_test_control: StartTestControl = None
-        self.loading_indicator: LoadingIndicator = None
-
-    def set_status_feedback(self, qt_label: QtWidgets.QLabel):
-        self.status_feedback = StatusFeedback(qt_label)
-
-    def set_start_test_control(self, qt_start_test_button: QtWidgets.QPushButton):
-        self.start_test_control = StartTestControl(qt_start_test_button)
-
-    def set_loading_indicator(self, qt_label: QtWidgets.QLabel):
-        self.loading_indicator = LoadingIndicator(qt_label)
+        self.status_feedback: StatusFeedback = StatusFeedback()
+        self.start_test_control: StartTestControl = StartTestControl()
+        self.loading_indicator: LoadingIndicator = LoadingIndicator()
 
     def ready(self):
         self.status_feedback.set_text("Connected to {0}".format(self.device.identify()))
@@ -340,4 +331,7 @@ class TestManager(QtCore.QThread):
         self.text_feedback.append_new_line("Test started.")
         self.text_feedback.append_new_line("Waiting for report...")
         self.wait_for_report()
-        return
+
+    def run(self):
+        self.start_test()
+
