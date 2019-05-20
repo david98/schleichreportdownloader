@@ -67,6 +67,10 @@ def init_app():
         ui = UiMainWindow(test_manager, log_config)
         ui.setup_ui(main_window)
         main_window.showFullScreen()
+        # this code should not be here, but I couldn't find a better way to do this
+        ui.startup.emit(1)
+        if ui.test_manager.please_resume:
+            ui.action_start_test.trigger()
         sys.exit(app.exec_())
 
 

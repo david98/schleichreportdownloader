@@ -7,7 +7,9 @@ import logging
 
 class UiMainWindow(QtCore.QObject):
 
+    startup = QtCore.pyqtSignal(int)
     filename_available = QtCore.pyqtSignal(str)
+    should_resume = QtCore.pyqtSignal(int)
 
     def __init__(self, test_manager: TestManager, log_config: dict):
         super().__init__()
@@ -28,6 +30,7 @@ class UiMainWindow(QtCore.QObject):
 
         self.spinner = QtGui.QMovie('spinner.gif')
         self.last_filename = None
+        self.will_resume = False
 
     def on_text_feedback_update(self, new_text: str):
         self.text_box.setText(new_text)
@@ -49,9 +52,14 @@ class UiMainWindow(QtCore.QObject):
         dialog = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report',
                                                           './report-{0}.xlsx'.format(int(time.time() * 1000)),
                                                           filter='*.xlsx')
-        logging.debug(dialog)
         self.last_filename = dialog[0]
         self.filename_available.emit(self.last_filename)
+
+    def on_unexpected_shutdown_detected(self, number: int):
+        should_resume = QtWidgets.QMessageBox.question(None, '', 'Unexpected shutdown during last test. Do you want'
+                                                                 ' to resume?',
+                                                       QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        self.should_resume.emit(should_resume == QtWidgets.QMessageBox.Yes)
 
     def setup_ui(self, main_window):
         main_window.setObjectName("MainWindow")
@@ -115,8 +123,11 @@ class UiMainWindow(QtCore.QObject):
         self.action_start_test.setEnabled(True)
         self.action_start_test.setObjectName("actionstart_test")
 
+        self.startup.connect(self.test_manager.on_startup)
         self.test_manager.show_filename_dialog.connect(self.on_show_filename_dialog)
+        self.test_manager.unexpected_shutdown_detected.connect(self.on_unexpected_shutdown_detected)
         self.filename_available.connect(self.test_manager.on_filename_available)
+        self.should_resume.connect(self.test_manager.on_should_resume)
 
         self.retranslate_ui(main_window)
         self.action_start_test.trigger = self.test_manager.start
@@ -134,4 +145,3 @@ class UiMainWindow(QtCore.QObject):
 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.action_start_test.setText(_translate("MainWindow", "start_test"))
         self.action_start_test.setToolTip(_translate("MainWindow", "Starts a test using the currently selected test protocol and waits for its end"))
-        self.test_manager.start()

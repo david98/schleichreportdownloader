@@ -162,18 +162,29 @@ class TestingDevice:
         self.id_string = ""
 
     def send_custom_command(self, command_hex):
-        self.ser.write(serial.to_bytes(command_hex))
+        try:
+            self.ser.write(serial.to_bytes(command_hex))
+        except serial.SerialException or OSError:
+            logging.exception('Exception while writing command. Maybe the device was disconnected?')
+            pass
         time.sleep(0.12)
 
     def read_all(self):
         read_data = ''
-        while self.ser.in_waiting > 0:
-            try:
-                new_data = self.ser.read(self.ser.in_waiting)
-                read_data += new_data.decode(errors='ignore')
-            except TypeError:
-                continue
-            time.sleep(0.12)
+        try:
+            while self.ser.in_waiting > 0:
+                try:
+                    new_data = self.ser.read(self.ser.in_waiting)
+                    read_data += new_data.decode(errors='ignore')
+                except OSError:
+                    logging.exception('Exception while reading from serial device. Maybe it was disconnected?')
+                    continue
+                except TypeError:
+                    continue
+                time.sleep(0.12)
+        except OSError:
+            logging.exception('Exception while reading from serial device. Maybe it was disconnected?')
+
         return read_data
 
     def beep(self):
@@ -302,16 +313,36 @@ class StartTestControl(QtCore.QObject):
 class TestManager(QtCore.QThread):
 
     show_filename_dialog = QtCore.pyqtSignal(int)
+    unexpected_shutdown_detected = QtCore.pyqtSignal(int)
 
     BACKUP_FOLDER = 'backups'
     POLLING_INTERVAL = 5
     MAX_BACKUP_FOLDER_SIZE = 0 * 1024 * 1024
     TEMP_FOLDER = 'temp'
 
+    def on_startup(self, number: int):
+        self.status_feedback.set_text("Connected to {0}".format(self.device.identify()))
+        if os.path.exists(self.TEMP_FOLDER + '/test_running'):
+            logging.warning('Unexpected shutdown detected.')
+            self.unexpected_shutdown_detected.emit(1)
+
     def on_filename_available(self, filename: str):
         self.last_report.store_as_xlsx(filename)
         self.text_feedback.append_new_line("Report was saved to {0}".format(filename))
         self.end_test()
+
+    def resume(self):
+        logging.info('Resuming...')
+        self.start_test_control.disable()
+        self.loading_indicator.enable()
+        self.text_feedback.append_new_line("Unexpected shutdown detected. Waiting for report...")
+        self.wait_for_report()
+
+    def on_should_resume(self, should_resume: bool):
+        if should_resume:
+            self.please_resume = True
+        else:
+            os.remove(self.TEMP_FOLDER + '/test_running')
 
     def __init__(self, device: TestingDevice, log_config: dict):
         super().__init__()
@@ -323,6 +354,8 @@ class TestManager(QtCore.QThread):
 
         if not os.path.exists(self.TEMP_FOLDER):
             os.makedirs(self.TEMP_FOLDER)
+
+        self.please_resume = False
 
         self.device = device
         self.text_feedback: TextFeedback = TextFeedback()
@@ -345,15 +378,6 @@ class TestManager(QtCore.QThread):
                 size -= file_size
                 i += 1
             logging.info('{0} files deleted.'.format(i))
-
-    def ready(self):
-        self.status_feedback.set_text("Connected to {0}".format(self.device.identify()))
-        if os.path.exists(self.TEMP_FOLDER + '/test_running'):
-            logging.warning('Unexpected shutdown detected. Resuming wait.')
-            self.start_test_control.disable()
-            self.loading_indicator.enable()
-            self.text_feedback.append_new_line("Unexpected shutdown detected. Waiting for report...")
-            self.wait_for_report()
 
     def end_test(self):
         self.start_test_control.enable()
@@ -386,5 +410,7 @@ class TestManager(QtCore.QThread):
         self.wait_for_report()
 
     def run(self):
-        self.ready()
-
+        if self.please_resume:
+            self.resume()
+        else:
+            self.start_test()
