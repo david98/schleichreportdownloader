@@ -124,3 +124,5 @@ dmypy.json
 
 .idea/
 *.xlsx
+backups/
+temp/
