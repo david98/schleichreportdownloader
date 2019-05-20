@@ -210,11 +210,12 @@ class TestingDevice:
         self.ser.close()
 
 
-class TextFeedback:
+class TextFeedback(QtCore.QObject):
 
     text_feedback_update = QtCore.pyqtSignal(str)
 
     def __init__(self):
+        super().__init__()
         self.text = ''
 
     def set_text(self, text: str):
@@ -235,11 +236,12 @@ class TextFeedback:
             self.append('\n' + text)
 
 
-class StatusFeedback:
+class StatusFeedback(QtCore.QObject):
 
     status_feedback_update = QtCore.pyqtSignal(str)
 
     def __init__(self):
+        super().__init__()
         self.text = ''
 
     def set_text(self, text: str):
@@ -247,11 +249,12 @@ class StatusFeedback:
         self.status_feedback_update.emit(text)
 
 
-class LoadingIndicator:
+class LoadingIndicator(QtCore.QObject):
 
     set_loading_indicator_enable = QtCore.pyqtSignal(bool)
 
     def __init__(self):
+        super().__init__()
         self.enabled = True
 
     def enable(self):
@@ -269,11 +272,12 @@ class LoadingIndicator:
             self.enable()
 
 
-class StartTestControl:
+class StartTestControl(QtCore.QObject):
 
     set_start_test_enable = QtCore.pyqtSignal(bool)
 
     def __init__(self):
+        super().__init__()
         self.enabled = True
 
     def enable(self):
@@ -306,7 +310,7 @@ class TestManager(QtCore.QThread):
 
     def end_test(self):
         self.start_test_control.enable()
-        self.loading_indicator.enable()
+        self.loading_indicator.disable()
 
     def wait_for_report(self):
         report = None
@@ -325,7 +329,7 @@ class TestManager(QtCore.QThread):
 
     def start_test(self):
         self.start_test_control.disable()
-        self.loading_indicator.disable()
+        self.loading_indicator.enable()
         self.device.start_test()
         self.text_feedback.clear()
         self.text_feedback.append_new_line("Test started.")

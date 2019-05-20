@@ -20,15 +20,12 @@ class UiMainWindow(object):
 
         self.spinner = QtGui.QMovie('spinner.gif')
 
-    @QtCore.pyqtSlot(str)
     def on_text_feedback_update(self, new_text: str):
         self.text_box.setText(new_text)
 
-    @QtCore.pyqtSlot(str)
     def on_status_feedback_update(self, new_text: str):
         self.connection_status.setText(new_text)
 
-    @QtCore.pyqtSlot(bool)
     def on_set_loading_indicator_enable(self, enabled: bool):
         if enabled:
             self.loading_icon.setMovie(self.spinner)
@@ -36,7 +33,6 @@ class UiMainWindow(object):
         else:
             self.loading_icon.clear()
 
-    @QtCore.pyqtSlot(bool)
     def on_set_start_test_enable(self, enabled: bool):
         self.start_test_button.setEnabled(enabled)
 
