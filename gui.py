@@ -1,8 +1,9 @@
-from schleichore import TestManager
+import logging
+import time
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import time
-import logging
+
+from schleichore import TestManager
 
 
 class UiMainWindow(QtCore.QObject):

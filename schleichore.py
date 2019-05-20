@@ -1,17 +1,16 @@
 # coding=UTF-8
 
-import serial
-import time
 import datetime
 import logging
 import os
+import time
 from pathlib import Path
 
+import serial
+from PyQt5 import QtCore
 from openpyxl import Workbook
-from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font
-
-from PyQt5 import QtCore, QtGui, QtWidgets
+from openpyxl.utils import get_column_letter
 
 
 def as_text(value):

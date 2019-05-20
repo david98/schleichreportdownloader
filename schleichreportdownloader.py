@@ -1,9 +1,10 @@
-from gui import UiMainWindow, QtWidgets
-from schleichore import TestingDevice, TestManager
-
 import logging
 import sys
+
 from serial import SerialException
+
+from gui import UiMainWindow, QtWidgets
+from schleichore import TestingDevice, TestManager
 
 
 # searches for the device on the first 100 USB-RS232 adapters
