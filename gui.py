@@ -10,6 +10,7 @@ class UiMainWindow(QtCore.QObject):
     startup = QtCore.pyqtSignal(int)
     filename_available = QtCore.pyqtSignal(str)
     should_resume = QtCore.pyqtSignal(int)
+    reconnect = QtCore.pyqtSignal(int)
 
     def __init__(self, test_manager: TestManager, log_config: dict):
         super().__init__()
@@ -31,6 +32,7 @@ class UiMainWindow(QtCore.QObject):
         self.spinner = QtGui.QMovie('spinner.gif')
         self.last_filename = None
         self.will_resume = False
+        self.communication_error = False
 
     def on_text_feedback_update(self, new_text: str):
         self.text_box.setText(new_text)
@@ -60,6 +62,18 @@ class UiMainWindow(QtCore.QObject):
                                                                  ' to resume?',
                                                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         self.should_resume.emit(should_resume == QtWidgets.QMessageBox.Yes)
+
+    def on_communication_error(self, number: int):
+        if not self.communication_error:
+            self.communication_error = True
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.Critical)
+            msg.setText("Communication error")
+            msg.setInformativeText('Did you disconnect the testing device? Make sure it is connected, then click ok.')
+            msg.setWindowTitle("Error")
+            msg.exec_()
+            self.communication_error = False
+            self.reconnect.emit(1)
 
     def setup_ui(self, main_window):
         main_window.setObjectName("MainWindow")
@@ -128,6 +142,8 @@ class UiMainWindow(QtCore.QObject):
         self.test_manager.unexpected_shutdown_detected.connect(self.on_unexpected_shutdown_detected)
         self.filename_available.connect(self.test_manager.on_filename_available)
         self.should_resume.connect(self.test_manager.on_should_resume)
+        self.test_manager.communication_error.connect(self.on_communication_error)
+        self.reconnect.connect(self.test_manager.on_reconnect_signal)
 
         self.retranslate_ui(main_window)
         self.action_start_test.trigger = self.test_manager.start

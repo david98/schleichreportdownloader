@@ -157,16 +157,44 @@ class TestingDevice:
     START_TEST_COMMAND = [0x02, 0x81, 0xfa, 0x73, 0x20, 0x32, 0x41, 0x03]
 
     def __init__(self, serial_port: str):
+        self.port = serial_port
         self.ser = serial.Serial(serial_port, baudrate=9600, timeout=None, parity=serial.PARITY_NONE,
                                  bytesize=serial.EIGHTBITS, stopbits=serial.STOPBITS_ONE, xonxoff=False)
         self.id_string = ""
 
+    def reconnect(self):
+        logging.debug('Trying to reconnect...')
+        self.ser.close()
+        try:
+            self.ser.open()
+            logging.info('Succesfully reconnected on {0}'.format(self.port))
+        except serial.SerialException:
+            i = 0
+            base_serial_string = "/dev/ttyUSB"
+            while i < 100:
+                try:
+                    i += 1
+                    device = TestingDevice(base_serial_string + str(i))
+                    id_string = device.identify()
+                    # this may need to be improved by actually checking the response
+                    if id_string == self.id_string:
+                        break
+                except serial.SerialException:
+                    continue
+                except Exception:
+                    logging.exception('Unknown exception while searching for testing device.')
+            if i < 100:
+                self.port = base_serial_string + str(i)
+                self.ser = serial.Serial(self.port, baudrate=9600, timeout=None, parity=serial.PARITY_NONE,
+                                    bytesize=serial.EIGHTBITS, stopbits=serial.STOPBITS_ONE, xonxoff=False)
+                logging.info('Succesfully reconnected on {0}'.format(self.port))
+
     def send_custom_command(self, command_hex):
         try:
             self.ser.write(serial.to_bytes(command_hex))
-        except serial.SerialException or OSError:
+        except serial.SerialException or OSError as e:
             logging.exception('Exception while writing command. Maybe the device was disconnected?')
-            pass
+            raise e
         time.sleep(0.12)
 
     def read_all(self):
@@ -176,14 +204,15 @@ class TestingDevice:
                 try:
                     new_data = self.ser.read(self.ser.in_waiting)
                     read_data += new_data.decode(errors='ignore')
-                except OSError:
+                except serial.SerialException or OSError as e:
                     logging.exception('Exception while reading from serial device. Maybe it was disconnected?')
-                    continue
+                    raise e
                 except TypeError:
                     continue
                 time.sleep(0.12)
-        except OSError:
+        except serial.SerialException or OSError as e:
             logging.exception('Exception while reading from serial device. Maybe it was disconnected?')
+            raise e
 
         return read_data
 
@@ -314,11 +343,15 @@ class TestManager(QtCore.QThread):
 
     show_filename_dialog = QtCore.pyqtSignal(int)
     unexpected_shutdown_detected = QtCore.pyqtSignal(int)
+    communication_error = QtCore.pyqtSignal(int)
 
     BACKUP_FOLDER = 'backups'
     POLLING_INTERVAL = 5
     MAX_BACKUP_FOLDER_SIZE = 0 * 1024 * 1024
     TEMP_FOLDER = 'temp'
+
+    def on_reconnect_signal(self, number: int):
+        self.device.reconnect()
 
     def on_startup(self, number: int):
         self.status_feedback.set_text("Connected to {0}".format(self.device.identify()))
@@ -383,6 +416,7 @@ class TestManager(QtCore.QThread):
         self.start_test_control.enable()
         self.loading_indicator.disable()
         os.remove(self.TEMP_FOLDER + '/test_running')
+        self.please_resume = False
 
     def wait_for_report(self):
         report = None
@@ -394,20 +428,26 @@ class TestManager(QtCore.QThread):
                 break
             except NoReportException:
                 continue
+            except serial.SerialException or OSError:
+                self.communication_error.emit(1)
+                continue
         self.text_feedback.append_new_line("Report downloaded succesfully.")
         self.last_report = report
         report.store_as_xlsx("{0}/{1}.xlsx".format(self.BACKUP_FOLDER, (int(time.time()*1000))))
         self.show_filename_dialog.emit(1)
 
     def start_test(self):
-        self.start_test_control.disable()
-        self.loading_indicator.enable()
-        self.device.start_test()
-        Path(self.TEMP_FOLDER + '/test_running').touch()
-        self.text_feedback.clear()
-        self.text_feedback.append_new_line("Test started.")
-        self.text_feedback.append_new_line("Waiting for report...")
-        self.wait_for_report()
+        try:
+            self.device.start_test()
+            self.start_test_control.disable()
+            self.loading_indicator.enable()
+            Path(self.TEMP_FOLDER + '/test_running').touch()
+            self.text_feedback.clear()
+            self.text_feedback.append_new_line("Test started.")
+            self.text_feedback.append_new_line("Waiting for report...")
+            self.wait_for_report()
+        except serial.SerialException:
+            self.communication_error.emit(1)
 
     def run(self):
         if self.please_resume:
