@@ -243,6 +243,13 @@ class TestingDevice:
             except NoReportException:
                 return reports
 
+    def is_testing(self):
+        self.beep()
+        time.sleep(0.12)
+        result = self.read_all()
+        # some magic conversion
+        return (":".join("{:02x}".format(ord(c)) for c in result)) == "07"
+
     def start_test(self):
         self.send_custom_command(TestingDevice.START_TEST_COMMAND)
         self.ser.reset_input_buffer()
@@ -423,22 +430,21 @@ class TestManager(QtCore.QThread):
         self.please_resume = False
 
     def wait_for_report(self):
-        report = None
         self.clean_backup_folder()
-        while True:
-            time.sleep(self.POLLING_INTERVAL)
-            try:
-                report = self.device.get_first_available_report()
-                break
-            except NoReportException:
-                continue
-            except serial.SerialException or OSError:
-                self.communication_error.emit(1)
-                continue
-        self.text_feedback.append_new_line("Report downloaded succesfully.")
-        self.last_report = report
-        report.store_as_xlsx("{0}/{1}.xlsx".format(self.BACKUP_FOLDER, (int(time.time()*1000))))
-        self.show_filename_dialog.emit(1)
+        try:
+            while self.device.is_testing():
+                time.sleep(self.POLLING_INTERVAL)
+
+            report = self.device.get_first_available_report()
+            self.text_feedback.append_new_line("Report downloaded succesfully.")
+            self.last_report = report
+            report.store_as_xlsx("{0}/{1}.xlsx".format(self.BACKUP_FOLDER, (int(time.time() * 1000))))
+            self.show_filename_dialog.emit(1)
+        except serial.SerialException or OSError:
+            self.communication_error.emit(1)
+        except NoReportException:
+            self.text_feedback.append_new_line('Test stopped. Ready for new test.')
+            self.end_test()
 
     def start_test(self):
         try:
