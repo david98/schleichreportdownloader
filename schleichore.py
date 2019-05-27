@@ -212,7 +212,8 @@ class TestingDevice:
         except serial.SerialException or OSError as e:
             logging.exception('Exception while reading from serial device. Maybe it was disconnected?')
             raise e
-
+        if len(read_data.strip()) > 0:
+            logging.debug('Read {0} bytes from device: {1}'.format(len(read_data), ":".join("{:02x}".format(ord(c)) for c in read_data)))
         return read_data
 
     def beep(self):
@@ -359,8 +360,12 @@ class TestManager(QtCore.QThread):
             self.unexpected_shutdown_detected.emit(1)
 
     def on_filename_available(self, filename: str):
-        self.last_report.store_as_xlsx(filename)
-        self.text_feedback.append_new_line("Report was saved to {0}".format(filename))
+        if len(filename.strip()) > 0:
+            self.last_report.store_as_xlsx(filename)
+            self.text_feedback.append_new_line("Report was saved to {0}".format(filename))
+        else:
+            self.text_feedback.append_new_line("Report was NOT saved. Please note that a backup copy was stored"
+                                               " in {0}/backups".format(os.getcwd()))
         self.end_test()
 
     def resume(self):
