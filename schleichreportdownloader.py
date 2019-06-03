@@ -4,8 +4,8 @@ import sys
 from serial import SerialException
 from configparser import ConfigParser
 
-from lib.gui import UiMainWindow, QtWidgets
-from lib.schleichore import TestingDevice, TestManager
+from custom_libs.gui import UiMainWindow, QtWidgets
+from custom_libs.schleichore import TestingDevice, TestManager
 
 
 class Configuration:
