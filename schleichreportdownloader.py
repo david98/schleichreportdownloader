@@ -2,9 +2,35 @@ import logging
 import sys
 
 from serial import SerialException
+from configparser import ConfigParser
 
-from gui import UiMainWindow, QtWidgets
-from schleichore import TestingDevice, TestManager
+from lib.gui import UiMainWindow, QtWidgets
+from lib.schleichore import TestingDevice, TestManager
+
+
+class Configuration:
+
+    DEFAULT_FILE_NAME = 'configuration.ini'
+    LOG_LEVELS = {
+        1: logging.DEBUG,
+        2: logging.INFO,
+        3: logging.WARNING,
+        4: logging.ERROR,
+        5: logging.CRITICAL
+    }
+
+    def __init__(self):
+        parser = ConfigParser()
+        parser.read(self.DEFAULT_FILE_NAME)
+
+        try:
+            log_level = int(parser.get('logging', 'level', fallback=3))
+            self.log_config = {
+                'level': self.LOG_LEVELS[log_level]
+            }
+        except ValueError as e:
+            print('Unexpected value in configuration file. Quitting.')
+            exit(1)
 
 
 # searches for the device on the first 100 USB-RS232 adapters
@@ -29,26 +55,9 @@ def get_devices():
 
 
 def init_app():
-    # logging configuration
-    log_levels = {
-        1: logging.DEBUG,
-        2: logging.INFO,
-        3: logging.WARNING,
-        4: logging.ERROR,
-        5: logging.CRITICAL
-    }
-    desired_log_level_index = 3
-    try:
-        desired_log_level_index = int(sys.argv[1])
-    except IndexError:
-        pass
+    config = Configuration()
 
-    log_config = {
-        'level': log_levels[desired_log_level_index]
-    }
-
-    logging.basicConfig(**log_config)
-    # end logging configuration
+    logging.basicConfig(**config.log_config)
 
     app = QtWidgets.QApplication(sys.argv)
     available_devices = get_devices()
@@ -64,8 +73,8 @@ def init_app():
         # maybe we could ask the user if he wants to store these
         device.get_all_reports()
 
-        test_manager = TestManager(device, log_config)
-        ui = UiMainWindow(test_manager, log_config)
+        test_manager = TestManager(device, config.log_config)
+        ui = UiMainWindow(test_manager, config.log_config)
         ui.setup_ui(main_window)
         main_window.showFullScreen()
         # this code should not be here, but I couldn't find a better way to do this
