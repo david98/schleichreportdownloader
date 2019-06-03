@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from serial import SerialException
@@ -11,7 +12,7 @@ from custom_libs.schleichore import TestingDevice, TestManager
 class Configuration:
 
     DEFAULT_FILE_NAME = 'configuration.ini'
-    LOGS_PATH = 'logs/'
+    LOGS_FOLDER = 'logs'
     LOG_NAME = 'logging-file.log'
     LOG_LEVELS = {
         1: logging.DEBUG,
@@ -26,12 +27,16 @@ class Configuration:
         parser.read(self.DEFAULT_FILE_NAME)
 
         try:
+
+            if not os.path.exists(self.LOGS_FOLDER):
+                os.makedirs(self.LOGS_FOLDER)
+
             log_level = int(parser.get('logging', 'level', fallback=3))
             self.log_config = {
                 'level': self.LOG_LEVELS[log_level],
                 'format': '%(asctime)s - %(message)s',
                 'datefmt': '%d-%b-%y %H:%M:%S',
-                'filename': self.LOGS_PATH + self.LOG_NAME,
+                'filename': f'{self.LOGS_FOLDER}/{self.LOG_NAME}',
                 'filemode': 'a'
             }
 
