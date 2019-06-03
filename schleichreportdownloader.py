@@ -1,5 +1,4 @@
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import sys
 
 from serial import SerialException
@@ -36,7 +35,7 @@ class Configuration:
                 'filemode': 'a'
             }
 
-        except ValueError as e:
+        except ValueError:
             print('Unexpected value in configuration file. Quitting.')
             exit(1)
 
