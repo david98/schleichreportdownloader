@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import sys
 
 from serial import SerialException
@@ -11,6 +12,8 @@ from custom_libs.schleichore import TestingDevice, TestManager
 class Configuration:
 
     DEFAULT_FILE_NAME = 'configuration.ini'
+    LOGS_PATH = 'logs/'
+    LOG_NAME = 'logging-file.log'
     LOG_LEVELS = {
         1: logging.DEBUG,
         2: logging.INFO,
@@ -26,8 +29,13 @@ class Configuration:
         try:
             log_level = int(parser.get('logging', 'level', fallback=3))
             self.log_config = {
-                'level': self.LOG_LEVELS[log_level]
+                'level': self.LOG_LEVELS[log_level],
+                'format': '%(asctime)s - %(message)s',
+                'datefmt': '%d-%b-%y %H:%M:%S',
+                'filename': self.LOGS_PATH + self.LOG_NAME,
+                'filemode': 'a'
             }
+
         except ValueError as e:
             print('Unexpected value in configuration file. Quitting.')
             exit(1)
@@ -58,6 +66,7 @@ def init_app():
     config = Configuration()
 
     logging.basicConfig(**config.log_config)
+    logging.debug('Log file test.')
 
     app = QtWidgets.QApplication(sys.argv)
     available_devices = get_devices()
