@@ -13,10 +13,10 @@ class UiMainWindow(QtCore.QObject):
     should_resume = QtCore.pyqtSignal(int)
     reconnect = QtCore.pyqtSignal(int)
 
-    def __init__(self, test_manager: TestManager, log_config: dict):
+    def __init__(self, test_manager: TestManager, config):
         super().__init__()
 
-        logging.basicConfig(**log_config)
+        logging.basicConfig(**config.log_config)
 
         self.test_manager = test_manager
 
@@ -34,6 +34,9 @@ class UiMainWindow(QtCore.QObject):
         self.last_filename = None
         self.will_resume = False
         self.communication_error = False
+
+        print(config.default_reports_folder)
+        self.default_reports_folder = config.default_reports_folder
 
     def on_text_feedback_update(self, new_text: str):
         self.text_box.setText(new_text)
@@ -53,7 +56,7 @@ class UiMainWindow(QtCore.QObject):
 
     def on_show_filename_dialog(self, number: int):
         dialog = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report',
-                                                          './report-{0}.xlsx'.format(int(time.time() * 1000)),
+                                                          '{0}report-{1}.xlsx'.format(self.default_reports_folder, int(time.time() * 1000)),
                                                           filter='*.xlsx')
         self.last_filename = dialog[0]
         self.filename_available.emit(self.last_filename)

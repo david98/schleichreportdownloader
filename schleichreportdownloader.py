@@ -55,6 +55,8 @@ class Configuration:
                 'filemode': 'a'
             }
 
+            self.default_reports_folder = parser.get('reports', 'default_folder', fallback='./')
+
         except ValueError:
             print('Unexpected value in configuration file. Quitting.')
             exit(1)
@@ -110,7 +112,7 @@ def init_app():
         device.get_all_reports()
 
         test_manager = TestManager(device, config.log_config)
-        ui = UiMainWindow(test_manager, config.log_config)
+        ui = UiMainWindow(test_manager, config)
         ui.setup_ui(main_window, screen_geometry)
         main_window.showFullScreen()
         # this code should not be here, but I couldn't find a better way to do this
