@@ -11,7 +11,8 @@ from custom_libs.schleichore import TestingDevice, TestManager
 
 class Configuration:
 
-    DEFAULT_FILE_NAME = 'configuration.ini'
+    DEFAULT_CONFIG_FILE_NAME = 'default-configuration.ini'
+    CONFIG_FILE_NAME = 'configuration.ini'
     LOGS_FOLDER = 'logs'
     LOG_NAME = 'logging-file.log'
     LOG_LEVELS = {
@@ -24,7 +25,21 @@ class Configuration:
 
     def __init__(self):
         parser = ConfigParser()
-        parser.read(self.DEFAULT_FILE_NAME)
+
+        '''If a configuration file was not created by the user, we create a default one.
+        This is to allow updates to the default configuration without breaking the user one, since the latter won't be
+        tracked by git '''
+        if not os.path.exists(self.CONFIG_FILE_NAME):
+            try:
+                with open(self.DEFAULT_CONFIG_FILE_NAME) as f:
+                    lines = f.readlines()
+                    with open(self.CONFIG_FILE_NAME, "w") as f1:
+                        f1.writelines(lines)
+            except IOError:
+                print('Exception while creating a configuration file. Maybe default-configuration.ini was deleted?')
+                exit(1)
+
+        parser.read(self.CONFIG_FILE_NAME)
 
         try:
 

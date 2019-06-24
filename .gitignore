@@ -127,3 +127,4 @@ dmypy.json
 backups/
 temp/
 logs/
+configuration.ini
