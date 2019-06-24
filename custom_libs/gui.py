@@ -1,5 +1,6 @@
 import logging
 import time
+import subprocess
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -52,9 +53,11 @@ class UiMainWindow(QtCore.QObject):
         self.start_test_button.setEnabled(enabled)
 
     def on_show_filename_dialog(self, number: int):
+        subprocess.Popen(['matchbox-keyboard'])
         dialog = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report',
                                                           './report-{0}.xlsx'.format(int(time.time() * 1000)),
                                                           filter='*.xlsx')
+        subprocess.Popen(['killall', 'matchbox-keyboard'])
         self.last_filename = dialog[0]
         self.filename_available.emit(self.last_filename)
 
