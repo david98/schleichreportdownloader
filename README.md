@@ -3,7 +3,7 @@
 This program was made to replace the software provided with Schleich's GLP2-e, a device for dielectric withstand tests.
 It allows an operator to start a test with the currently selected test program and then save the report as an .xlsx file.
 It's meant to be used as a control panel in conjunction with a Raspberry Pi and a touchscreen, but
-it runs just fine on any Linux machine (it could be made to work with other OS's and I plan
+it runs just fine on any Linux machine (it could be made to work with other OS' and I plan
 on doing it in the future).
 
 # Requirements
