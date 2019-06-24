@@ -7,6 +7,23 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from custom_libs.schleichore import TestManager
 
 
+class Keyboard(QtCore.QThread):
+
+    def __init__(self):
+        super().__init__()
+        self.running = False
+
+    def run(self):
+        subprocess.Popen(['matchbox-keyboard'])
+        self.running = True
+        while self.running:
+            pass
+
+    def stop(self):
+        subprocess.Popen(['killall', 'matchbox-keyboard'])
+        self.running = False
+
+
 class UiMainWindow(QtCore.QObject):
 
     startup = QtCore.pyqtSignal(int)
@@ -35,6 +52,7 @@ class UiMainWindow(QtCore.QObject):
         self.last_filename = None
         self.will_resume = False
         self.communication_error = False
+        self.keyboard = Keyboard()
 
     def on_text_feedback_update(self, new_text: str):
         self.text_box.setText(new_text)
@@ -53,11 +71,12 @@ class UiMainWindow(QtCore.QObject):
         self.start_test_button.setEnabled(enabled)
 
     def on_show_filename_dialog(self, number: int):
-        subprocess.Popen(['matchbox-keyboard'])
+        self.keyboard.start()
+        time.sleep(5)
         dialog = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report',
                                                           './report-{0}.xlsx'.format(int(time.time() * 1000)),
                                                           filter='*.xlsx')
-        subprocess.Popen(['killall', 'matchbox-keyboard'])
+        self.keyboard.stop()
         self.last_filename = dialog[0]
         self.filename_available.emit(self.last_filename)
 
