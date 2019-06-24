@@ -72,7 +72,6 @@ class UiMainWindow(QtCore.QObject):
 
     def on_show_filename_dialog(self, number: int):
         self.keyboard.start()
-        time.sleep(5)
         dialog = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Report',
                                                           './report-{0}.xlsx'.format(int(time.time() * 1000)),
                                                           filter='*.xlsx')
