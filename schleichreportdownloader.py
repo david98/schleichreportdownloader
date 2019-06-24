@@ -112,7 +112,7 @@ def init_app():
         test_manager = TestManager(device, config.log_config)
         ui = UiMainWindow(test_manager, config.log_config)
         ui.setup_ui(main_window, screen_geometry)
-        main_window.show()
+        main_window.showFullScreen()
         # this code should not be here, but I couldn't find a better way to do this
         ui.startup.emit(1)
         if ui.test_manager.please_resume:
