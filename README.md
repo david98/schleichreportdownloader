@@ -37,3 +37,6 @@ You may encounter some issues when installing PyQT on Raspbian. If so, follow th
 # Configuration
 
 The configuration file, named `configuration.ini` resides in the repository root.
+
+You can pass in a directory path as the first command line argument. If the path exists,
+it will be used as the working directory for the program.

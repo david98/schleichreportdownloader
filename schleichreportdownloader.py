@@ -34,7 +34,7 @@ class Configuration:
             log_level = int(parser.get('logging', 'level', fallback=3))
             self.log_config = {
                 'level': self.LOG_LEVELS[log_level],
-                'format': '%(asctime)s - %(message)s',
+                'format': '%(asctime)s - [%(levelname)s] - %(message)s',
                 'datefmt': '%d-%b-%y %H:%M:%S',
                 'filename': f'{self.LOGS_FOLDER}/{self.LOG_NAME}',
                 'filemode': 'a'
@@ -67,6 +67,13 @@ def get_devices():
 
 
 def init_app():
+
+    # we need to change the current working directory to the one passed as a command line argument, if present
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+        if os.path.exists(path):
+            os.chdir(path)
+
     config = Configuration()
 
     logging.basicConfig(**config.log_config)
