@@ -97,9 +97,9 @@ class UiMainWindow(QtCore.QObject):
             self.communication_error = False
             self.reconnect.emit(1)
 
-    def setup_ui(self, main_window):
+    def setup_ui(self, main_window, screen_geometry):
         main_window.setObjectName("MainWindow")
-        main_window.setMinimumSize(QtCore.QSize(1280, 500))
+        main_window.setMinimumSize(QtCore.QSize(screen_geometry.width(), screen_geometry.height()/3 * 2))
         main_window.setAcceptDrops(False)
         main_window.setAutoFillBackground(False)
         self.central_widget = QtWidgets.QWidget(main_window)

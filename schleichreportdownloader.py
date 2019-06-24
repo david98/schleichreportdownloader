@@ -95,6 +95,7 @@ def init_app():
     logging.debug('Log file test.')
 
     app = QtWidgets.QApplication(sys.argv)
+    screen_geometry = app.desktop().screenGeometry()
     available_devices = get_devices()
     if len(available_devices) == 0:
         error_dialog = QtWidgets.QErrorMessage()
@@ -110,7 +111,7 @@ def init_app():
 
         test_manager = TestManager(device, config.log_config)
         ui = UiMainWindow(test_manager, config.log_config)
-        ui.setup_ui(main_window)
+        ui.setup_ui(main_window, screen_geometry)
         main_window.show()
         # this code should not be here, but I couldn't find a better way to do this
         ui.startup.emit(1)
