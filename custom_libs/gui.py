@@ -99,7 +99,7 @@ class UiMainWindow(QtCore.QObject):
 
     def setup_ui(self, main_window):
         main_window.setObjectName("MainWindow")
-        main_window.setMinimumSize(QtCore.QSize(400, 300))
+        main_window.setMinimumSize(QtCore.QSize(1280, 500))
         main_window.setAcceptDrops(False)
         main_window.setAutoFillBackground(False)
         self.central_widget = QtWidgets.QWidget(main_window)
