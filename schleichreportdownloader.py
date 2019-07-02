@@ -56,6 +56,8 @@ class Configuration:
             }
 
             self.default_reports_folder = parser.get('reports', 'default_folder', fallback='./')
+            self.backup_folder = parser.get('reports', 'backup_folder', fallback='./backups')
+            self.backup_folder_max_size = int(parser.get('reports', 'backup_folder_max_size', fallback='512')) * 1024 * 1024
 
         except ValueError:
             print('Unexpected value in configuration file. Quitting.')
@@ -111,7 +113,7 @@ def init_app():
         # maybe we could ask the user if he wants to store these
         device.get_all_reports()
 
-        test_manager = TestManager(device, config.log_config)
+        test_manager = TestManager(device, config)
         ui = UiMainWindow(test_manager, config)
         ui.setup_ui(main_window, screen_geometry)
         main_window.showFullScreen()

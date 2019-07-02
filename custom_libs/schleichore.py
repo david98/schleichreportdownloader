@@ -352,9 +352,7 @@ class TestManager(QtCore.QThread):
     unexpected_shutdown_detected = QtCore.pyqtSignal(int)
     communication_error = QtCore.pyqtSignal(int)
 
-    BACKUP_FOLDER = 'backups'
     POLLING_INTERVAL = 5
-    MAX_BACKUP_FOLDER_SIZE = 0 * 1024 * 1024
     TEMP_FOLDER = 'temp'
 
     def on_reconnect_signal(self, number: int):
@@ -388,16 +386,20 @@ class TestManager(QtCore.QThread):
         else:
             os.remove(self.TEMP_FOLDER + '/test_running')
 
-    def __init__(self, device: TestingDevice, log_config: dict):
+    def __init__(self, device: TestingDevice, config):
         super().__init__()
 
-        logging.basicConfig(**log_config)
-
-        if not os.path.exists(self.BACKUP_FOLDER):
-            os.makedirs(self.BACKUP_FOLDER)
+        logging.basicConfig(**config.log_config)
 
         if not os.path.exists(self.TEMP_FOLDER):
             os.makedirs(self.TEMP_FOLDER)
+
+        self.backup_folder = config.backup_folder
+
+        if not os.path.exists(self.backup_folder):
+            os.makedirs(self.backup_folder)
+
+        self.backup_folder_max_size = config.backup_folder_max_size
 
         self.please_resume = False
 
@@ -409,16 +411,16 @@ class TestManager(QtCore.QThread):
         self.last_report = None
 
     def clean_backup_folder(self):
-        size = sum(os.path.getsize(self.BACKUP_FOLDER + '/' + f) for f in os.listdir(self.BACKUP_FOLDER) if os.path.isfile(self.BACKUP_FOLDER + '/' + f))
+        size = sum(os.path.getsize(self.backup_folder + '/' + f) for f in os.listdir(self.backup_folder) if os.path.isfile(self.backup_folder + '/' + f))
         logging.debug('Backup folder size is {0}'.format(size))
-        if size > self.MAX_BACKUP_FOLDER_SIZE:
+        if size > self.backup_folder_max_size:
             logging.info('Backup folder max size exceeded. Purging backups starting from the oldest.')
-            files = os.listdir(self.BACKUP_FOLDER)
+            files = os.listdir(self.backup_folder)
             files.sort()
             i = 0
-            while size > self.MAX_BACKUP_FOLDER_SIZE:
-                file_size = os.path.getsize(self.BACKUP_FOLDER + '/' + files[i])
-                os.remove(self.BACKUP_FOLDER + '/' + files[i])
+            while size > self.backup_folder_max_size:
+                file_size = os.path.getsize(self.backup_folder + '/' + files[i])
+                os.remove(self.backup_folder + '/' + files[i])
                 size -= file_size
                 i += 1
             logging.info('{0} files deleted.'.format(i))
@@ -438,7 +440,7 @@ class TestManager(QtCore.QThread):
             report = self.device.get_first_available_report()
             self.text_feedback.append_new_line("Report downloaded succesfully.")
             self.last_report = report
-            report.store_as_xlsx("{0}/{1}.xlsx".format(self.BACKUP_FOLDER, (int(time.time() * 1000))))
+            report.store_as_xlsx("{0}/{1}.xlsx".format(self.backup_folder, (int(time.time() * 1000))))
             self.show_filename_dialog.emit(1)
         except serial.SerialException or OSError:
             self.communication_error.emit(1)

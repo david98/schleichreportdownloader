@@ -35,7 +35,6 @@ class UiMainWindow(QtCore.QObject):
         self.will_resume = False
         self.communication_error = False
 
-        print(config.default_reports_folder)
         self.default_reports_folder = config.default_reports_folder
 
     def on_text_feedback_update(self, new_text: str):
