@@ -69,7 +69,7 @@ class TestReport:
 
         bold_font = Font(bold=True)
 
-        dest_filename = name
+        dest_filename = name if name.endswith('.xlsx') else f'{name}.xlsx'
 
         ws1 = wb.active
         ws1.title = "Test Report"
