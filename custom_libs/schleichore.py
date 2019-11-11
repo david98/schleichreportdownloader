@@ -365,7 +365,7 @@ class TestManager(QtCore.QThread):
             self.unexpected_shutdown_detected.emit(1)
 
     def on_filename_available(self, filename: str):
-        if len(filename.strip()) > 0:
+        if filename:
             self.last_report.store_as_xlsx(filename)
             self.text_feedback.append_new_line("Report was saved to {0}".format(filename))
         else:
@@ -449,6 +449,7 @@ class TestManager(QtCore.QThread):
             self.end_test()
 
     def start_test(self):
+        self.device.get_all_reports()
         try:
             self.device.start_test()
             self.start_test_control.disable()
