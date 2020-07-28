@@ -14,25 +14,13 @@ on doing it in the future).
 
 1. Clone this repository.
 2. Move into the cloned repository and run `pip install -r requirements.txt`.<br>
-You may encounter some issues when installing PyQT on Raspbian. If so, follow these steps:
+You may encounter some issues when installing PyQT on Raspberry Pi OS. If so, follow these steps:
     1. Open `requirements.txt`, then remove `PyQt5==5.12.1`, `PyQt5-sip==4.19.17` and `PyQt5-stubs==5.12.1.0`
-    2. Download SIP and PyQt5 sources from https://www.riverbankcomputing.com/software/pyqt/download5
-    3. Extract both archives
-    4. Now: 
+    2. Run: 
     ```
-        $ cd <path to sip source>
-        $ python3.x configure.py --sip-module=PyQt5.sip
-        $ make
-        $ sudo make install
-        
-        $ sudo apt install qt5-qmake qt5-default -y
-        
-        $ cd <path to PyQt5 source>
-        $ python3.x configure.py
-        $ make  
-        $ sudo make install
+        $ sudo apt install python3-pyqt5
      ```
-    5. Run once again `pip install -r requirements.txt`
+    3. Run once again `pip install -r requirements.txt`
 
 # Configuration
 
