@@ -1,4 +1,5 @@
 # coding=UTF-8
+from abc import ABC, abstractmethod
 
 import datetime
 import logging
@@ -148,7 +149,98 @@ class TestReport:
         return string
 
 
-class TestingDevice:
+class TestingDevice(ABC):
+
+    @abstractmethod
+    def __init__(self, serial_port: str):
+        pass
+
+    @abstractmethod
+    def reconnect(self):
+        pass
+
+    @abstractmethod
+    def send_custom_command(self, command_hex):
+        pass
+
+    @abstractmethod
+    def read_all(self):
+        pass
+
+    @abstractmethod
+    def beep(self):
+        pass
+
+    @abstractmethod
+    def identify(self):
+        pass
+
+    @abstractmethod
+    def get_first_available_report(self):
+        pass
+
+    @abstractmethod
+    def get_all_reports(self):
+        pass
+
+    @abstractmethod
+    def is_testing(self):
+        pass
+
+    @abstractmethod
+    def start_test(self):
+        pass
+
+    @abstractmethod
+    def clear_all_reports(self):
+        pass
+
+    @abstractmethod
+    def close_communication(self):
+        pass
+
+
+class FakeTestingDevice(TestingDevice):
+
+    def __init__(self, serial_port: str):
+        self.port = serial_port
+        self.id_string = "DEBUG DEVICE"
+
+    def reconnect(self):
+        pass
+
+    def send_custom_command(self, command_hex):
+        pass
+
+    def read_all(self):
+        pass
+
+    def beep(self):
+        pass
+
+    def identify(self):
+        pass
+
+    def get_first_available_report(self):
+        pass
+
+    def get_all_reports(self):
+        pass
+
+    def is_testing(self):
+        pass
+
+    def start_test(self):
+        pass
+
+    def clear_all_reports(self):
+        pass
+
+    def close_communication(self):
+        pass
+
+
+class ActualTestingDevice(TestingDevice):
 
     BEEP_COMMAND = [0x02, 0x81, 0xfa, 0x62, 0x20, 0x33, 0x42, 0x03]
     IDENTIFY_COMMAND = [0x02, 0x81, 0xfd]
@@ -173,7 +265,7 @@ class TestingDevice:
             while i < 100:
                 try:
                     i += 1
-                    device = TestingDevice(base_serial_string + str(i))
+                    device = ActualTestingDevice(base_serial_string + str(i))
                     id_string = device.identify()
                     # this may need to be improved by actually checking the response
                     if id_string == self.id_string:
@@ -217,11 +309,11 @@ class TestingDevice:
         return read_data
 
     def beep(self):
-        self.send_custom_command(TestingDevice.BEEP_COMMAND)
+        self.send_custom_command(ActualTestingDevice.BEEP_COMMAND)
 
     def identify(self):
         logging.debug('Requesting identification.')
-        self.send_custom_command(TestingDevice.IDENTIFY_COMMAND)
+        self.send_custom_command(ActualTestingDevice.IDENTIFY_COMMAND)
         id_string = self.read_all()
         id_string = (id_string.split("Conness.")[0])[3:]
         self.id_string = id_string
@@ -229,7 +321,7 @@ class TestingDevice:
         return id_string
 
     def get_first_available_report(self):
-        self.send_custom_command(TestingDevice.GET_REPORT_COMMAND)
+        self.send_custom_command(ActualTestingDevice.GET_REPORT_COMMAND)
         result = self.read_all()
         if len(result.strip().replace('\x07', '').replace('\x15', '').replace('4', '').replace('\x03', '').replace('2', '')) == 0:
             raise NoReportException('No report available for download.')
@@ -251,7 +343,7 @@ class TestingDevice:
         return (":".join("{:02x}".format(ord(c)) for c in result)) == "07"
 
     def start_test(self):
-        self.send_custom_command(TestingDevice.START_TEST_COMMAND)
+        self.send_custom_command(ActualTestingDevice.START_TEST_COMMAND)
         self.ser.reset_input_buffer()
 
     def clear_all_reports(self):
@@ -386,7 +478,7 @@ class TestManager(QtCore.QThread):
         else:
             os.remove(self.TEMP_FOLDER + '/test_running')
 
-    def __init__(self, device: TestingDevice, config):
+    def __init__(self, device: ActualTestingDevice, config):
         super().__init__()
 
         logging.basicConfig(**config.log_config)

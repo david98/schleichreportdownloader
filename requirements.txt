@@ -2,9 +2,9 @@ configparser==3.7.4
 et-xmlfile==1.0.1
 jdcal==1.4
 openpyxl==2.6.2
-PyQt5==5.12.1
-PyQt5-sip==4.19.17
-PyQt5-stubs==5.12.1.0
+PyQt5
+PyQt5-sip
+PyQt5-stubs
 pyserial==3.4
 python-utils==2.3.0
 six==1.12.0

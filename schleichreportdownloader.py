@@ -6,7 +6,7 @@ from serial import SerialException
 from configparser import ConfigParser
 
 from custom_libs.gui import UiMainWindow, QtWidgets
-from custom_libs.schleichore import TestingDevice, TestManager
+from custom_libs.schleichore import ActualTestingDevice, FakeTestingDevice, TestManager
 
 
 class Configuration:
@@ -59,6 +59,8 @@ class Configuration:
             self.backup_folder = parser.get('reports', 'backup_folder', fallback='./backups')
             self.backup_folder_max_size = int(parser.get('reports', 'backup_folder_max_size', fallback='512')) * 1024 * 1024
 
+            self.fake = parser.getboolean('debug', 'fake', fallback=False)
+
         except ValueError:
             print('Unexpected value in configuration file. Quitting.')
             exit(1)
@@ -73,7 +75,7 @@ def get_devices():
     while i < 100:
         try:
             i += 1
-            device = TestingDevice(base_serial_string + str(i))
+            device = ActualTestingDevice(base_serial_string + str(i))
             id_string = device.identify()
             # this may need to be improved by actually checking the response
             if len(id_string) > 0:
@@ -95,23 +97,28 @@ def init_app():
 
     config = Configuration()
 
+
     logging.basicConfig(**config.log_config)
     logging.debug('Log file test.')
 
     app = QtWidgets.QApplication(sys.argv)
     screen_geometry = app.desktop().screenGeometry()
     available_devices = get_devices()
-    if len(available_devices) == 0:
+    if len(available_devices) == 0 and not config.fake:
         error_dialog = QtWidgets.QErrorMessage()
         error_dialog.showMessage('No connected device available. Exiting.')
         sys.exit(app.exec_())
     else:
         main_window = QtWidgets.QMainWindow()
-        device = TestingDevice(available_devices[0][0])
+        device = None
+        if not config.fake:
+            device = ActualTestingDevice(available_devices[0][0])
 
-        # we need to flush the device's cache, otherwise we'll get an old report
-        # maybe we could ask the user if he wants to store these
-        device.get_all_reports()
+            # we need to flush the device's cache, otherwise we'll get an old report
+            # maybe we could ask the user if he wants to store these
+            device.get_all_reports()
+        else:
+            device = FakeTestingDevice("/dev/DEBUG")
 
         test_manager = TestManager(device, config)
         ui = UiMainWindow(test_manager, config)
