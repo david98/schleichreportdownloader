@@ -80,7 +80,7 @@ class UiMainWindow(QtCore.QObject):
 
     def setup_ui(self, main_window, screen_geometry):
         main_window.setObjectName("MainWindow")
-        main_window.setMinimumSize(QtCore.QSize(screen_geometry.width(), screen_geometry.height()/3 * 2))
+        main_window.setMinimumSize(QtCore.QSize(screen_geometry.width(), screen_geometry.height()))
         main_window.setAcceptDrops(False)
         main_window.setAutoFillBackground(False)
         self.central_widget = QtWidgets.QWidget(main_window)
